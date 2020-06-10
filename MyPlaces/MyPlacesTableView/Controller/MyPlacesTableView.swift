@@ -10,14 +10,20 @@ import UIKit
 import RealmSwift
 
 final class MyPlacesTableView: UIViewController, UITableViewDelegate, UITableViewDataSource {
-    
-    // MARK: - Public properties
-    
-    var places: Results<PlaceCellModel>!
 
     // MARK: - Private properties
     
+    private let searchController = UISearchController(searchResultsController: nil)
+    private var places: Results<PlaceCellModel>!
     private var revestSorting = true
+    private var filterPlaces: Results<PlaceCellModel>!
+    private var searchBarIsEmpty: Bool {
+        guard let searchBarText = searchController.searchBar.text else { return false }
+        return searchBarText.isEmpty
+    }
+    private var isFilttering: Bool {
+        return searchController.isActive && !searchBarIsEmpty
+    }
     
     // MARK: - Outlets
     
@@ -31,6 +37,7 @@ final class MyPlacesTableView: UIViewController, UITableViewDelegate, UITableVie
         super.viewDidLoad()
         
         places = realm.objects(PlaceCellModel.self)
+        setupSerchController()
     }
     
     //MARK: - @IBAction
@@ -70,28 +77,50 @@ final class MyPlacesTableView: UIViewController, UITableViewDelegate, UITableVie
         tableView.reloadData()
     }
     
+    private func setupSerchController() {
+        searchController.searchResultsUpdater = self
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Search"
+        navigationItem.searchController = searchController
+        definesPresentationContext = true
+    }
+    
     // MARK: - Segue
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "showDetail" {
             guard let indexPath = tableView.indexPathForSelectedRow else { return }
-            let place = places[indexPath.row]
+            let place: PlaceCellModel
+            if isFilttering {
+                place = filterPlaces[indexPath.row]
+            } else {
+                place = places[indexPath.row ]
+            }
             let editingPlaceViewController = segue.destination as? NewPlaceTableViewTableViewController
             editingPlaceViewController?.editingCellPlace = place
         }
     }
     
-    // MARK: - Work with table view
+    // MARK: - UITableViewDelegate & UITableViewDataSource methods
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if isFilttering {
+            return filterPlaces.count
+        }
         return places.isEmpty ? 0 : places.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let place = places[indexPath.row]
+        var place = PlaceCellModel()
         guard let cell = tableView.dequeueReusableCell(withIdentifier: "PlaceCel", for: indexPath) as? PlaceTableViewCell
             else {
             return UITableViewCell()
+        }
+        
+        if isFilttering {
+            place = filterPlaces[indexPath.row]
+        } else {
+            place = places[indexPath.row ]
         }
         cell.placeTitle.text = place.title
         cell.placeLocation.text = place.location
@@ -121,4 +150,15 @@ final class MyPlacesTableView: UIViewController, UITableViewDelegate, UITableVie
     }
 }
 
+// MARK: - Extensions
 
+extension MyPlacesTableView: UISearchResultsUpdating {
+    func updateSearchResults(for searchController: UISearchController) {
+        filrtContent(for: searchController.searchBar.text!)
+    }
+    
+    private func filrtContent(for searchText: String) {
+        filterPlaces = places.filter("title CONTAINS[c]  %@ OR location CONTAINS[c] %@", searchText, searchText)
+        tableView.reloadData()
+    }
+}
