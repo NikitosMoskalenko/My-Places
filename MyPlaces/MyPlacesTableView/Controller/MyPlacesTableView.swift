@@ -125,6 +125,7 @@ final class MyPlacesTableView: UIViewController, UITableViewDelegate, UITableVie
         cell.placeTitle.text = place.title
         cell.placeLocation.text = place.location
         cell.typeOfPlace.text = place.type
+        cell.cellRatingControl.rating = Int(place.rating)
         
         cell.placePhoto.image = UIImage(data: place.imageData!)
         cell.placePhoto.backgroundColor = #colorLiteral(red: 0.501960814, green: 0.501960814, blue: 0.501960814, alpha: 1)
@@ -147,6 +148,10 @@ final class MyPlacesTableView: UIViewController, UITableViewDelegate, UITableVie
         StorageManager.deletedPlace(param: place)
         tableView.endUpdates()
         tableView.reloadData()
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
     }
 }
 
